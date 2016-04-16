@@ -50,9 +50,16 @@ Having problems or solved a problem? Check out the Islandora google groups for a
 
 Current maintainers:
 
+<<<<<<< HEAD
 https://sites.google.com/site/islandoraconsortiagroup/home
 
 http://commonmedia.com
+=======
+* [Mark McFate](https://github.com/McFateM)
+* [Steve Young](https://github.com/hamhpc)
+* [Peter MacDonald](https://github.com/petermacdonald)
+* [Jessika Drmacich](https:/github.com/jgd1)
+>>>>>>> mark/master
 
 ## Development
 
