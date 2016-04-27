@@ -111,23 +111,36 @@ function _icg_ajax_callback_ns_form($selected_cmodel, $namespaces) {
  *
  * This function needs more comments than 0, what the heck was I thinking?
  */
-function _icg_form_array_iterator_set_options(&$array, $mappable_options) {
+function _icg_form_array_iterator_set_options(&$form, &$array, $mappable_options) {
   $manipulable_fields = array(
     'textfield',
     'textarea',
     'tags',
   );
-
+  
   if(isset($array['#type'])
     && in_array($array['#type'], $manipulable_fields)) {
+    $title = $array['#title'];
     $array['#type'] = 'select';
     $array['#options'] = $mappable_options;
+    $array[$title . 'constant'] = array(
+      '#title' => $title . '-CONST',
+      '#description' => 'Enter your constant value for this field',
+      '#type' => 'textfield',
+      '#states' => array(
+        'invisible' => array(
+          'input[name='.$title.']' => array(
+            'value' => 'USE_CONSTANT',
+          ),
+        ),
+      ),
+    );
     // @TODO Do we want to append something to the description as help text?
   }
   else if (is_array($array)) {
     foreach($array as $key => &$value){
       if (isset($value) && is_array($value)) {
-        _icg_form_array_iterator_set_options($value, $mappable_options);
+        _icg_form_array_iterator_set_options($form, $value, $mappable_options);
       }
     }
   }

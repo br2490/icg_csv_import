@@ -260,6 +260,7 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         foreach ($csv_parsed[0] as $column_heading) {
           $mappable_options[$column_heading] = $column_heading;
         }
+        $mappable_options['USE_CONSTANT'] = 'Use a constant value...';
 
         // Grab the XML form the user selected as associated.
         $xml_form = xml_form_builder_get_form($form, $form_state, $form_name);
@@ -267,8 +268,9 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         // Make the form OURS! Change all textareas/textfields into selects and
         // use our options array from above.
         // Stand clear of the crazy iterator while in motion.
-        _icg_form_array_iterator_set_options($xml_form, $mappable_options);
-
+        dpm($xml_form);
+        _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options);
+        dpm($xml_form);
         $form = $xml_form;
       }
 
