@@ -264,15 +264,19 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
 
         // Grab the XML form the user selected as associated.
         $xml_form = xml_form_builder_get_form($form, $form_state, $form_name);
-
+        $testing = _icg_form_array_iterator_sets_options($xml_form, $mappable_options);
+        
+        
+        //$test = xml_form_builder_associations_form($form, $form_state, $form_name);
+        
         // Make the form OURS! Change all textareas/textfields into selects and
         // use our options array from above.
         // Stand clear of the crazy iterator while in motion.
-        dpm($xml_form);
-        _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
-        dpm($xml_form);
 
-        $xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
+        //_icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
+
+
+        //$xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
 
         $form = $xml_form;
       }

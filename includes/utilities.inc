@@ -103,6 +103,58 @@ function _icg_ajax_callback_ns_form($selected_cmodel, $namespaces) {
   return $ret;
 }
 
+function _icg_form_array_iterator_sets_options(&$xml_form, $mappable_options, $form_name=NULL) {
+  $manipulable_fields = array(
+    'textfield',
+    'textarea',
+    'tags',
+  );
+
+  dpm($xml_form);
+  $iterator = new RecursiveArrayIterator($xml_form);
+
+  foreach ($iterator as $form_element => $options) {
+    dpm($options);
+    // Not at end: show key only
+    if ($iterator->hasChildren()) {
+      dpm("Level: $form_element");
+      // At end: show key, value and path
+    } else {
+
+   }
+
+
+
+//  foreach ($xml_form as $form_element => $options) {
+//    if (strpos($form_element,'#') !== 0) {
+//      dpm($form_element);
+//
+//      $options['xpath'] = $form_element;
+//      $xpath = $options['#actions']['read']['path'];
+//      $options['xml-path'] = $xpath;
+//      if (isset($options['#type']) && in_array($options['#type'], $manipulable_fields)) {
+//        _icg_form_mutilator($options, $mappable_options);
+//      }
+//      if (is_array($options) && strpos($options,'#') !== 0) {
+//
+//      }
+//      dpm($options);
+//    }
+//  }
+
+}
+
+function _listArrayRecursive($someArray) {
+  $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($someArray));
+  dpm($iterator);
+
+}
+
+function _icg_form_mutilator(&$form_parts, $mappable_options) {
+  $form_parts['#type'] = 'select';
+  $form_parts['#options'] = $mappable_options;
+}
+
 /**
  * Iterates through a form array and replaces specific fields and their options.
  *
@@ -116,9 +168,8 @@ function _icg_ajax_callback_ns_form($selected_cmodel, $namespaces) {
 function _icg_form_array_iterator_set_options(&$form, &$array, $mappable_options, $form_name=NULL) {
   static $xpaths = array( );
   static $position;
-  
-  static $manipulable_fields = array(
 
+  static $manipulable_fields = array(
     'textfield',
     'textarea',
     'tags',
@@ -151,20 +202,23 @@ function _icg_form_array_iterator_set_options(&$form, &$array, $mappable_options
     $array['#type'] = 'select';
     $array['#options'] = $mappable_options;
     $array['#description'] = 'This field is mapped to ' . $xpaths[$title] . '.';
+    $test = str_replace('/mods','',$xpaths[$title]);
+    //dpm($test);
 
     // Add a field for addition of an optional constant.
-    $array[$title . '- constant'] = array(
-      '#title' => $title . '-CONST',
-      '#description' => 'Enter your constant value for this field',
-      '#type' => 'textfield',
-      '#states' => array(
-        'invisible' => array(
-          'input[name='.$title.']' => array(
-            'value' => 'USE_CONSTANT',
-          ),
-        ),
-      ),
-    );
+    $array[$title . '-constant']['#title'] = $title . '-CONST';
+    // = array(
+      // '#title' = $title . '-CONST',
+      // '#description' = 'Enter your constant value for this field',
+      // '#type' = 'textfield',
+      // '#states' => array(
+      //   'invisible' => array(
+      //     'input[name='.$title.']' => array(
+      //       'value' => 'USE_CONSTANT',
+      //     ),
+      //   ),
+      // ),
+    // );
     // @TODO Do we want to append something to the description as help text?
   }
   
@@ -186,12 +240,14 @@ function _icg_csv_import_get_xpaths($form_name) {
   if (isset($form_name)) {
     module_load_include('inc', 'xml_form_builder', 'XMLFormRepository');
     $doc = XMLFormRepository::Get($form_name);  // This is a DOMDocument representation of the form
+    // dpm($doc);
 
     if ($doc) {
       $xpath = new DOMXPath($doc);
       $result = $xpath->query('//element[@name]');
       // $result = $xpath->query('//element[@name] | //@*');   // failed attempt to get attributes
       $elements = dom_node_list_to_array($result);   // a mix of DOMElement and DOMAttr nodes
+      // dpm(get_defined_vars());
       if (count($elements) > 0) {
         $output = array( );
         foreach ($elements as $element) {
