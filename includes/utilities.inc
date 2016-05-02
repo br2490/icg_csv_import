@@ -103,56 +103,70 @@ function _icg_ajax_callback_ns_form($selected_cmodel, $namespaces) {
   return $ret;
 }
 
-function _icg_form_array_iterator_sets_options(&$xml_form, $mappable_options, $form_name=NULL) {
-  $manipulable_fields = array(
-    'textfield',
-    'textarea',
-    'tags',
-  );
+// @Override
+/**
+ * Gets a Form from the database.
+ *
+ * Modules should implement xml_form_builder_get_form_modify_definition hook
+ * when they need to make modifications form builder schema that is loaded
+ * into the form.  This is currently needed to allow for the modifications of
+ * tab panel element access so that when it adds a new element the default
+ * schema template will have the correct permissions to make the element
+ * accessible.
+ *
+ * @param array $form
+ *   An array containing any "wrapping" elements.
+ * @param array $form_state
+ *   The Drupal Form State
+ * @param string $form_name
+ *   The Form to render.
+ * @param string $xml
+ *   The metadata to prepopulate the form with,
+ * @param array $parents
+ *   An array containing the offset of the parents.
+ *
+ * @return array
+ *   The Drupal Form, if it exists FALSE otherwise.
+ */
+function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_name, $options_dom, $xml = NULL, $parents = array()) {
+  form_load_include($form_state, 'inc', 'xml_form_builder', 'XMLFormRepository');
+  form_load_include($form_state, 'inc', 'xml_form_api', 'XMLForm');
+  form_load_include($form_state, 'inc', 'xml_form_api', 'XMLFormDefinition');
+  if (!XMLFormRepository::Exists($form_name)) {
+    drupal_set_message(t('The form "%name" does not exist.', array('%name' => $form_name)));
+    return FALSE;
+  }
+  elseif (!XMLFormRepository::Valid($form_name)) {
+    drupal_set_message(t('The Drupal form "%name" exists but is not valid. Please notify the administrator.', array('%name' => $form_name)));
+    return FALSE;
+  }
+  try {
+    $xml_form = new XMLForm($form_state, $parents);
+    // Was not initialized from storage.
+    if (!$xml_form->isInitialized()) {
+       $definition = new XMLFormDefinition(XMLFormRepository::Get($form_name));
+      dpm($definition->definition);
+      dpm($definition->definition->saveXML());
 
-  dpm($xml_form);
-  $iterator = new RecursiveArrayIterator($xml_form);
 
-  foreach ($iterator as $form_element => $options) {
-    dpm($options);
-    // Not at end: show key only
-    if ($iterator->hasChildren()) {
-      dpm("Level: $form_element");
-      // At end: show key, value and path
-    } else {
+      // This can be used later to update saved crosswalks.
+      $document = $definition->createXMLDocument($xml);
+      $form = $definition->getForm();
 
-   }
-
-
-
-//  foreach ($xml_form as $form_element => $options) {
-//    if (strpos($form_element,'#') !== 0) {
-//      dpm($form_element);
-//
-//      $options['xpath'] = $form_element;
-//      $xpath = $options['#actions']['read']['path'];
-//      $options['xml-path'] = $xpath;
-//      if (isset($options['#type']) && in_array($options['#type'], $manipulable_fields)) {
-//        _icg_form_mutilator($options, $mappable_options);
-//      }
-//      if (is_array($options) && strpos($options,'#') !== 0) {
-//
-//      }
-//      dpm($options);
-//    }
-//  }
-
-}
-
-function _listArrayRecursive($someArray) {
-  $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($someArray));
-  dpm($iterator);
-
-}
-
-function _icg_form_mutilator(&$form_parts, $mappable_options) {
-  $form_parts['#type'] = 'select';
-  $form_parts['#options'] = $mappable_options;
+      drupal_alter(XML_FORM_BUILDER_GET_FORM_MODIFY_DEFINITION_HOOK, $form,
+        $form_state);
+      $xml_form->initialize($form, $document);
+    }
+    $form = array_merge($form, $xml_form->toArray($form_state));
+  }
+  catch (Exception $e) {
+    // Catch any errors that occured and display them to the user so that they
+    // may correct their form definition.
+    $msg = "File: {$e->getFile()}<br/>Line: {$e->getLine()}<br/>Error: {$e->getMessage()}";
+    drupal_set_message(filter_xss($msg), 'error');
+    return FALSE;
+  }
+  return $form;
 }
 
 /**
@@ -281,7 +295,3 @@ function _icg_csv_import_get_xpaths($form_name) {
   }
   return array(NULL => t('Metadata Form Not Found!'));
 }
-
-
-// a DOMElement
-
