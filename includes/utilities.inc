@@ -174,8 +174,9 @@ function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_n
 /**
  * This mangles the dom element that will create our form.
  *
- * @param \DOMDocument $definition
+ * @param \DOMDocument $dom
  * @param array $mappable_options
+ * @internal param \DOMDocument $definition
  */
 function _icg_dom_form_manipulation(DOMDocument &$dom, $mappable_options) {
   static $manipulable_fields = array(
@@ -184,7 +185,7 @@ function _icg_dom_form_manipulation(DOMDocument &$dom, $mappable_options) {
     'tags',
   );
 
-  //dpm($dom->saveXML());
+  dpm($dom->saveXML());
   $xpath = new DOMXPath($dom);
   $all_types = $dom->getElementsByTagName('type');
 
@@ -192,7 +193,8 @@ function _icg_dom_form_manipulation(DOMDocument &$dom, $mappable_options) {
     $parent = $element->parentNode;
 
     // @TODO wrap in instanceof logic.
-    $mods = $xpath->query('.//read/path', $parent->parentNode)->item(0)->nodeValue;
+    $mods = $xpath->query('.//create/value', $parent->parentNode)->item(0)->nodeValue;
+    dpm($mods);
     if (!empty($mods)) {
       $mods_description = $dom->createElement('description', $mods);
       $parent->appendChild($mods_description);

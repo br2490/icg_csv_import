@@ -272,7 +272,8 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
       // this that and the other thing.
       $xml_form = _icg_xml_form_builder_get_form($form, $form_state, $form_name, $mappable_options);
 
-      //$xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
+      // @DEPRECATED
+      // $xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
 
       $form = $xml_form;
       dpm($form);
