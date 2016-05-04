@@ -2,6 +2,7 @@
 
 /**
  * CSV Import Form Callback
+ * 
  * @param $form
  * @param $form_state
  * @param $collection
@@ -17,8 +18,7 @@ function icg_csv_import_form($form, &$form_state, $collection) {
   // Build the form steps
   try {
     $step = $form_state['step'];
-    $current_form = icg_csv_import_get_form($step, $collection,
-      $form_state);
+    $current_form = icg_csv_import_get_form($step, $collection, $form_state);
   } catch (Exception $e) {
     drupal_set_message(t($e->getMessage()), 'error');
     return FALSE;
@@ -35,27 +35,12 @@ function icg_csv_import_form($form, &$form_state, $collection) {
  * @param $form_state
  */
 function icg_csv_import_form_submit($form, &$form_state) {
-  // CSV file handler. I'm sure this could be done better.
-  if (isset($form_state['values']['csv_file'])) {
+  module_load_include('inc', 'icg_csv_import', 'includes/batch');
 
-    // File validation, upload and storage in temporary://.
-    $validators = array(
-      'file_validate_extensions' => array('csv txt'),
-      // @TODO set a file size limit?
-    );
+  // Save our current values to all_values.
+  $form_state['all_values'] += $form_state['values'];
+  # dpm($form_state);
 
-    $file =
-      file_save_upload('csv_file', $validators, FALSE, FILE_EXISTS_REPLACE);
-    if ($file) {
-      // drupal file object
-      $form_state['all_values']['csv_file'] = $file;
-    }
-    else {
-      form_set_error('csv_file', "A CSV file is required to continue.");
-    }
-  }
-
-  // Form multi-part 'handler'
   switch ($form_state['step']):
     case 0:
       // Save our current values to all_values.
@@ -75,6 +60,7 @@ function icg_csv_import_form_submit($form, &$form_state) {
       break;
     case 2:
       // Do something with all_values and redirect away from the form!
+      icg_csv_import_build_batch($form_state);
       dpm($form_state);
       break;
 
@@ -109,22 +95,22 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
   // Since this is used frequently in here, we include it universally for each
   // form part.
   module_load_include('inc', 'icg_csv_import', 'includes/utilities');
+  module_load_include('inc', 'xml_forms', 'builder/includes/associations.form');
 
   if (!isset($form_state['collection_policy'])) {
-
     // This will throw an error if no CPOLICY.
     $collection_info =
       _icg_csv_import_get_available_ingest_models($collection);
-
     // Keep a copy in the form_state, we may need it later, else remove.
     $form_state['collection_policy'] = $collection_info;
-
     // Save parent PIDs.
-    $form_state['all_values']['parent_pid'] = ($collection->getParents());
+    $form_state['all_values']['parent_pid'] = $collection->id;
   }
 
+  // Switch through the form $steps.
   switch ($step):
 
+    // The first form page... collect all control parameters.
     case 0:
 
       // This is unnecessary but it feels right.
@@ -135,12 +121,15 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
       $selected_cmodel = isset($form_state['values']['content_model']) ?
         $form_state['values']['content_model'] : key($content_models);
 
+      $form['#validate'][] = 'icg_csv_import_validate';
+
       $form['content_model'] = array(
         '#type' => 'select',
         '#title' => t('Destination Content Model'),
         '#description' => t('Select an available content model to ingest into.'),
         '#options' => $content_models,
         '#default_value' => $selected_cmodel,
+        '#required' => TRUE,
         '#ajax' => array(
           'callback' => 'icg_csv_import_form_ajax_callback',
         ),
@@ -152,6 +141,7 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         '#prefix' => '<div id="xml-dropdown-update">',
         '#suffix' => '</div>',
         '#description' => t('Lorem ipsum.'),
+        '#required' => TRUE,
         '#options' => _icg_ajax_callback_xml_form($selected_cmodel, $xml_forms),
       );
 
@@ -161,6 +151,7 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         '#prefix' => '<div id="namespace-dropdown-update">',
         '#suffix' => '</div>',
         '#description' => t('Select an available destination namespace'),
+        '#required' => TRUE,
         '#options' => _icg_ajax_callback_ns_form($selected_cmodel, $namespaces),
       );
 
@@ -174,18 +165,44 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         '#default_value' => ',',
       );
 
-      $form['ingest_as_inactive'] = array(
-        '#type' => 'checkbox',
-        '#title' => t('Ingest items as inactive?'),
-        '#default_value' => TRUE,
-      );
-
       $form['csv_file'] = array(
         '#name' => 'files[csv_file]',
         '#type' => 'file',
         '#title' => t('Select your CSV File.'),
         '#description' => t('Allowed file types are .csv and .txt'),
-        '#size' => 22,
+        '#size' => 200,
+        '#required' => TRUE,
+        '#default_value' => TRUE,
+      );
+
+      $form['skip_field_mapping'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('CSV first row already contains the field mapping?'),
+        '#description' => t('Check this box if the first row of your CSV file already contains mapped XPaths.'),
+        '#default_value' => FALSE,
+      );
+
+      $form['credentials_username'] = array(
+        '#type' => 'textfield',
+        '#title' => t('File Transfer Username'),
+        '#description' => t('Enter the username required to execute content file transfers.'),
+        '#size' => 20,
+        '#required' => FALSE,
+        '#default_value' => 'None',
+      );
+
+      $form['credentials_password'] = array(
+        '#type' => 'password',
+        '#title' => t('File Transfer Password'),
+        '#description' => t('Enter the password corresponding to username (above) to execute content file transfers.'),
+        '#size' => 20,
+        '#required' => FALSE,
+        '#default_value' => 'None',
+      );
+
+      $form['ingest_as_inactive'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Ingest items as inactive?'),
         '#default_value' => TRUE,
       );
 
@@ -196,7 +213,40 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
 
       break;
 
+    // Form page 2... Map CSV columns to metadata form elements.
     case 1:
+      
+      // A metadata form has been selected.  Fetch it's title and add it's data array to
+//      $form_state['collection_policy']['selected']
+//      $selected_form = $form_state['all_values']['xml_form'];
+//      $cmodel = $form_state['all_values']['content_model'];
+//      $forms = $form_state['collection_policy']['forms'][$cmodel];
+
+//      foreach($forms as $fdata) {
+//        if ($fdata['form_name'] === $selected_form) {
+//          $form_state['collection_policy']['selected'] = $fdata;
+//          $path = drupal_get_path('module', 'xml_form_builder');
+//          $form_state['all_values']['transform'] = $path.'/transforms/'.$fdata['transform'];
+//          $label_field = '/mods';
+//          foreach($fdata['title_field'] as $tfield) {
+//            $label_field .= '/'.$tfield;
+//          }
+//          $form_state['all_values']['label_field'] = $label_field;
+//          break;
+//        }
+//      }
+
+      // @TODO This should not be in the form, instead the handler process.
+//      if ($form_state['values']['skip_field_mapping']) {
+//
+//        $form['message'] = array(
+//          '#markup' => "<p>You have indicated that metadata XPaths are already mapped in the first row of the CSV file.  Click 'Next' to proceed.</p>",
+//        );
+//
+//      } else {
+
+      // Map CSV columns to metadata form elements.
+
       // Load our CSV parser.
       module_load_include('inc', 'icg_csv_import', 'includes/csv');
 
@@ -210,33 +260,32 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
       $csv_prepared = icg_csv_load_csv_data($file->uri, $delimit);
       $csv_parsed = icg_csv_parse_csv_data($csv_prepared);
 
+
+      // @TODO move this to the handler, not the form.
       // Create an array of options for our form. Include an 'ignore' option.
       // @TODO: check with JDP if this is acceptable use of CSV array[0].
-      $mappable_options = array(NULL => 'Ignored Field',);
-      foreach ($csv_parsed[0] as $column_heading) {
-        $mappable_options[$column_heading] = $column_heading;
-      }
+      $universal_options = array(NULL => 'Ignored Field', "USE_CONSTANT" => 'Enter a constant value...',);
 
-      // Grab the XML form the user selected as associated.
-      $xml_form = xml_form_builder_get_form($form, $form_state, $form_name);
+      $mappable_options = array_merge($universal_options, $csv_parsed[0]);
 
-      // Make the form OURS! Change all textareas/textfields into selects and
-      // use our options array from above.
-      // Stand clear of the crazy iterator while in motion.
-      _icg_form_array_iterator_set_options($xml_form, $mappable_options);
+      // Grab the XML form the user selected as associated. Modified version of
+      // this that and the other thing.
+      $xml_form = _icg_xml_form_builder_get_form($form, $form_state, $form_name, $mappable_options);
+
+      //$xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
 
       $form = $xml_form;
+      dpm($form);
 
       $form['submit'] = array(
         '#type' => 'submit',
-        // This #value means I've lost my mind!
-        '#value' => t('BEEP BEEP BOOP BOOP')
+        '#value' => t('Next')
       );
 
       break;
 
+    // What was this page here for? Something probably.  @TODO...maybe display the XPath map?
     case 2:
-      // What was this page here for? Something probably.
       
       $step3['submit'] = array(
         '#type' => 'submit',
@@ -245,7 +294,29 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
 
       $form[] = $step3;
       break;
+    
   endswitch;
 
   return $form;
+}
+
+/**
+ * Form validation handler.
+ * 
+ * @param $form
+ * @param $form_state
+ */
+function icg_csv_import_validate($form, &$form_state) {
+  $validators = array('file_validate_extensions' => array('csv txt'));
+
+  // Check for a new uploaded CSV.
+  $file = file_save_upload('csv_file', $validators);
+  if (isset($file)) {
+    // File upload was attempted.
+    if ($file) {
+      $form_state['values']['csv_file'] = $file;  // Put the temporary file in $form_values so we can save it on submit.
+    } else {
+      form_set_error('icg_csv_import', t('The CSV file could not be uploaded.'));  // File upload failed.
+    }
+  }
 }
