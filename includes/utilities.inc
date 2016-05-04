@@ -146,6 +146,8 @@ function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_n
     if (!$xml_form->isInitialized()) {
        $definition = new XMLFormDefinition(XMLFormRepository::Get($form_name));
       dpm($definition->definition);
+      _icg_dom_form_manipulation($definition->definition, $options_dom);
+
       dpm($definition->definition->saveXML());
 
 
@@ -168,6 +170,40 @@ function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_n
   }
   return $form;
 }
+
+function _icg_dom_form_manipulation(DOMDocument &$definition, Array $mappable_options) {
+  static $manipulable_fields = array(
+    'textfield',
+    'textarea',
+    'tags',
+  );
+
+//  $options_dom = new DOMDocument();
+//  $options = $options_dom->createElement('options');
+//  foreach ($headers as $heading) {
+//    $option_element = $options_dom->createElement('index', $heading);
+//    $option_element->setAttribute("key", $heading);
+//    $options->appendChild($option_element);
+//  }
+//  $options_dom->appendChild($options);
+  return;
+  $all_types = $definition->getElementsByTagName('type');
+  foreach ($all_types as $element) {
+    if (in_array($element->nodeValue, $manipulable_fields) && $element instanceof DOMElement) {
+      $element->nodeValue = 'select';
+      $parent = $element->parentNode;
+      $options = $definition->createElement('options');
+      foreach ($mappable_options as $option) {
+        $option_element = $options->createElement('index', $option);
+        $option_element->setAttribute("key", $option);
+        $options->appendChild($option_element);
+      }
+      $options->appendChild($parent);
+    }
+    dpm($definition->saveXML());
+  }
+}
+
 
 /**
  * Iterates through a form array and replaces specific fields and their options.

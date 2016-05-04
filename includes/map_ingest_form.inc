@@ -255,23 +255,15 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         $csv_prepared = icg_csv_load_csv_data($file->uri, $delimit);
         $csv_parsed = icg_csv_parse_csv_data($csv_prepared);
 
+
+        // @TODO move this to the handler, not the form.
         // Create an array of options for our form. Include an 'ignore' option.
         // @TODO: check with JDP if this is acceptable use of CSV array[0].
         $universal_options = array(NULL => 'Ignored Field', "USE_CONSTANT" => 'Enter a constant value...',);
-        $headers = array_merge($universal_options, $csv_parsed[0]);
-        $options_dom = new DOMDocument();
-        $options = $options_dom->createElement('options');
-        foreach ($headers as $heading) {
-          $option_element = $options_dom->createElement('index', $heading);
-          $option_element->setAttribute("key", $heading);
-          $options->appendChild($option_element);
-        }
-        $options_dom->appendChild($options);
-        //$what = $options_dom->saveXML($options_dom->documentElement);
+        $mappable_options = array_merge($universal_options, $csv_parsed[0]);
 
         // Grab the XML form the user selected as associated.
-        $xml_form = _icg_xml_form_builder_get_form($form, $form_state, $form_name, $options_dom);
-        // $testing = _icg_form_array_iterator_sets_options($xml_form, $mappable_options);
+        $xml_form = _icg_xml_form_builder_get_form($form, $form_state, $form_name, $mappable_options);
         
         
         //$test = xml_form_builder_associations_form($form, $form_state, $form_name);
