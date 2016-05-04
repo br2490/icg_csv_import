@@ -120,13 +120,14 @@ function _icg_ajax_callback_ns_form($selected_cmodel, $namespaces) {
  *   The Drupal Form State
  * @param string $form_name
  *   The Form to render.
+ * @param array $mappable_options
+ *   The CSV headers that will be used to map xpaths onto.
  * @param string $xml
  *   The metadata to prepopulate the form with,
  * @param array $parents
  *   An array containing the offset of the parents.
- *
- * @return array
- *   The Drupal Form, if it exists FALSE otherwise.
+ * @return array The Drupal Form, if it exists FALSE otherwise.
+ * The Drupal Form, if it exists FALSE otherwise.
  */
 function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_name, array $mappable_options, $xml = NULL, $parents = array()) {
   form_load_include($form_state, 'inc', 'xml_form_builder', 'XMLFormRepository');
@@ -144,10 +145,11 @@ function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_n
     $xml_form = new XMLForm($form_state, $parents);
     // Was not initialized from storage.
     if (!$xml_form->isInitialized()) {
-       $definition = new XMLFormDefinition(XMLFormRepository::Get($form_name));
+      $definition = new XMLFormDefinition(XMLFormRepository::Get($form_name));
 
       // This is our mangler.
-      _icg_dom_form_manipulation($definition->definition, $mappable_options);
+      $dom = $definition->definition;
+      _icg_dom_form_manipulation($dom, $mappable_options);
 
       // This can be used later to update saved crosswalks.
       $document = $definition->createXMLDocument($xml);
@@ -175,31 +177,47 @@ function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_n
  * @param \DOMDocument $definition
  * @param array $mappable_options
  */
-function _icg_dom_form_manipulation(DOMDocument &$definition, Array $mappable_options) {
+function _icg_dom_form_manipulation(DOMDocument &$dom, $mappable_options) {
   static $manipulable_fields = array(
     'textfield',
     'textarea',
     'tags',
   );
 
-  $all_types = $definition->getElementsByTagName('type');
+  //dpm($dom->saveXML());
+  $xpath = new DOMXPath($dom);
+  $all_types = $dom->getElementsByTagName('type');
+
   foreach ($all_types as $element) {
+    $parent = $element->parentNode;
+
+    // @TODO wrap in instanceof logic.
+    $mods = $xpath->query('.//read/path', $parent->parentNode)->item(0)->nodeValue;
+    if (!empty($mods)) {
+      $mods_description = $dom->createElement('description', $mods);
+      $parent->appendChild($mods_description);
+    }
+
     if (in_array($element->nodeValue, $manipulable_fields) && $element instanceof DOMElement) {
       $element->nodeValue = 'select';
-      $parent = $element->parentNode;
-      $options = $definition->createElement('options');
+
+      // @TODO I really do not want this in a loop, why can't I make this and append it by passing it as an arg?
+      $options = $dom->createElement('options');
       foreach ($mappable_options as $option) {
-        $option_element = $definition->createElement('index', $option);
+        $option_element = $dom->createElement('index', $option);
         $option_element->setAttribute("key", $option);
         $options->appendChild($option_element);
       }
+
       $parent->appendChild($options);
     }
   }
+
 }
 
 
 /**
+ * @DEPRECATED
  * Iterates through a form array and replaces specific fields and their options.
  *
  * @param $form - The metadata form as an object.
