@@ -128,7 +128,7 @@ function _icg_ajax_callback_ns_form($selected_cmodel, $namespaces) {
  * @return array
  *   The Drupal Form, if it exists FALSE otherwise.
  */
-function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_name, $options_dom, $xml = NULL, $parents = array()) {
+function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_name, array $mappable_options, $xml = NULL, $parents = array()) {
   form_load_include($form_state, 'inc', 'xml_form_builder', 'XMLFormRepository');
   form_load_include($form_state, 'inc', 'xml_form_api', 'XMLForm');
   form_load_include($form_state, 'inc', 'xml_form_api', 'XMLFormDefinition');
@@ -145,11 +145,9 @@ function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_n
     // Was not initialized from storage.
     if (!$xml_form->isInitialized()) {
        $definition = new XMLFormDefinition(XMLFormRepository::Get($form_name));
-      dpm($definition->definition);
-      _icg_dom_form_manipulation($definition->definition, $options_dom);
 
-      dpm($definition->definition->saveXML());
-
+      // This is our mangler.
+      _icg_dom_form_manipulation($definition->definition, $mappable_options);
 
       // This can be used later to update saved crosswalks.
       $document = $definition->createXMLDocument($xml);
@@ -171,6 +169,12 @@ function _icg_xml_form_builder_get_form(array $form, array &$form_state, $form_n
   return $form;
 }
 
+/**
+ * This mangles the dom element that will create our form.
+ *
+ * @param \DOMDocument $definition
+ * @param array $mappable_options
+ */
 function _icg_dom_form_manipulation(DOMDocument &$definition, Array $mappable_options) {
   static $manipulable_fields = array(
     'textfield',
@@ -178,15 +182,6 @@ function _icg_dom_form_manipulation(DOMDocument &$definition, Array $mappable_op
     'tags',
   );
 
-//  $options_dom = new DOMDocument();
-//  $options = $options_dom->createElement('options');
-//  foreach ($headers as $heading) {
-//    $option_element = $options_dom->createElement('index', $heading);
-//    $option_element->setAttribute("key", $heading);
-//    $options->appendChild($option_element);
-//  }
-//  $options_dom->appendChild($options);
-  return;
   $all_types = $definition->getElementsByTagName('type');
   foreach ($all_types as $element) {
     if (in_array($element->nodeValue, $manipulable_fields) && $element instanceof DOMElement) {
@@ -194,13 +189,12 @@ function _icg_dom_form_manipulation(DOMDocument &$definition, Array $mappable_op
       $parent = $element->parentNode;
       $options = $definition->createElement('options');
       foreach ($mappable_options as $option) {
-        $option_element = $options->createElement('index', $option);
+        $option_element = $definition->createElement('index', $option);
         $option_element->setAttribute("key", $option);
         $options->appendChild($option_element);
       }
-      $options->appendChild($parent);
+      $parent->appendChild($options);
     }
-    dpm($definition->saveXML());
   }
 }
 

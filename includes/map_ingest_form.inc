@@ -110,7 +110,8 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
   // Switch through the form $steps.
   switch ($step):
 
-    case 0:    // The first form page... collect all control parameters.
+    // The first form page... collect all control parameters.
+    case 0:
 
       // This is unnecessary but it feels right.
       $content_models = $form_state['collection_policy']['models'];
@@ -212,73 +213,69 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
 
       break;
 
-    case 1:     // Form page 2... Map CSV columns to metadata form elements.
+    // Form page 2... Map CSV columns to metadata form elements.
+    case 1:
       
       // A metadata form has been selected.  Fetch it's title and add it's data array to
-      // $form_state['collection_policy']['selected']
-      $selected_form = $form_state['all_values']['xml_form'];
-      $cmodel = $form_state['all_values']['content_model'];
-      $forms = $form_state['collection_policy']['forms'][$cmodel];
-      foreach($forms as $fdata) {
-        if ($fdata['form_name'] === $selected_form) {
-          $form_state['collection_policy']['selected'] = $fdata;
-          $path = drupal_get_path('module', 'xml_form_builder');
-          $form_state['all_values']['transform'] = $path.'/transforms/'.$fdata['transform'];
-          $label_field = '/mods';
-          foreach($fdata['title_field'] as $tfield) {
-            $label_field .= '/'.$tfield;
-          }
-          $form_state['all_values']['label_field'] = $label_field;
-          break;
-        }
-      }  
-      
-      // No mapping necessary...let the user know to proceed.
-      if ($form_state['values']['skip_field_mapping']) {
+//      $form_state['collection_policy']['selected']
+//      $selected_form = $form_state['all_values']['xml_form'];
+//      $cmodel = $form_state['all_values']['content_model'];
+//      $forms = $form_state['collection_policy']['forms'][$cmodel];
 
-        $form['message'] = array(
-          '#markup' => "<p>You have indicated that metadata XPaths are already mapped in the first row of the CSV file.  Click 'Next' to proceed.</p>",
-        );
+//      foreach($forms as $fdata) {
+//        if ($fdata['form_name'] === $selected_form) {
+//          $form_state['collection_policy']['selected'] = $fdata;
+//          $path = drupal_get_path('module', 'xml_form_builder');
+//          $form_state['all_values']['transform'] = $path.'/transforms/'.$fdata['transform'];
+//          $label_field = '/mods';
+//          foreach($fdata['title_field'] as $tfield) {
+//            $label_field .= '/'.$tfield;
+//          }
+//          $form_state['all_values']['label_field'] = $label_field;
+//          break;
+//        }
+//      }
 
-      } else {    // Map CSV columns to metadata form elements.
+      // @TODO This should not be in the form, instead the handler process.
+//      if ($form_state['values']['skip_field_mapping']) {
+//
+//        $form['message'] = array(
+//          '#markup' => "<p>You have indicated that metadata XPaths are already mapped in the first row of the CSV file.  Click 'Next' to proceed.</p>",
+//        );
+//
+//      } else {
 
-        // Load our CSV parser.
-        module_load_include('inc', 'icg_csv_import', 'includes/csv');
+      // Map CSV columns to metadata form elements.
 
-        // Set some variables we know we'll end up using.
-        $file = $form_state['all_values']['csv_file'];
-        $delimit = $form_state['all_values']['csv_delimiter'];
-        $form_name = $form_state['all_values']['xml_form'];
+      // Load our CSV parser.
+      module_load_include('inc', 'icg_csv_import', 'includes/csv');
 
-        // Parse our CSV file.
-        // @TODO: ask JDP if this is correct CSV.inc use.
-        $csv_prepared = icg_csv_load_csv_data($file->uri, $delimit);
-        $csv_parsed = icg_csv_parse_csv_data($csv_prepared);
+      // Set some variables we know we'll end up using.
+      $file = $form_state['all_values']['csv_file'];
+      $delimit = $form_state['all_values']['csv_delimiter'];
+      $form_name = $form_state['all_values']['xml_form'];
 
-
-        // @TODO move this to the handler, not the form.
-        // Create an array of options for our form. Include an 'ignore' option.
-        // @TODO: check with JDP if this is acceptable use of CSV array[0].
-        $universal_options = array(NULL => 'Ignored Field', "USE_CONSTANT" => 'Enter a constant value...',);
-        $mappable_options = array_merge($universal_options, $csv_parsed[0]);
-
-        // Grab the XML form the user selected as associated.
-        $xml_form = _icg_xml_form_builder_get_form($form, $form_state, $form_name, $mappable_options);
-        
-        
-        //$test = xml_form_builder_associations_form($form, $form_state, $form_name);
-        
-        // Make the form OURS! Change all textareas/textfields into selects and
-        // use our options array from above.
-        // Stand clear of the crazy iterator while in motion.
-
-        //_icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
+      // Parse our CSV file.
+      // @TODO: ask JDP if this is correct CSV.inc use.
+      $csv_prepared = icg_csv_load_csv_data($file->uri, $delimit);
+      $csv_parsed = icg_csv_parse_csv_data($csv_prepared);
 
 
-        //$xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
+      // @TODO move this to the handler, not the form.
+      // Create an array of options for our form. Include an 'ignore' option.
+      // @TODO: check with JDP if this is acceptable use of CSV array[0].
+      $universal_options = array(NULL => 'Ignored Field', "USE_CONSTANT" => 'Enter a constant value...',);
 
-        $form = $xml_form;
-      }
+      $mappable_options = array_merge($universal_options, $csv_parsed[0]);
+
+      // Grab the XML form the user selected as associated. Modified version of
+      // this that and the other thing.
+      $xml_form = _icg_xml_form_builder_get_form($form, $form_state, $form_name, $mappable_options);
+
+      //$xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
+
+      $form = $xml_form;
+      dpm($form);
 
       $form['submit'] = array(
         '#type' => 'submit',
@@ -287,7 +284,8 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
 
       break;
 
-    case 2:     // What was this page here for? Something probably.  @TODO...maybe display the XPath map?
+    // What was this page here for? Something probably.  @TODO...maybe display the XPath map?
+    case 2:
       
       $step3['submit'] = array(
         '#type' => 'submit',
