@@ -3,6 +3,39 @@
  * @file
  * This file documents all available hook functions to manipulate data.
  */
+ 
+/**
+ * Implements hook_validate_csv($delimiter, $xpath, $data).
+ * This hook should be used to check/validate CSV Xpaths (row 1) and data (row X) from a structured CSV data file.
+ *
+ * @param array $xpaths
+ *   An array of Xpath values...the header row of the structured CSV data.
+ * @param array $data
+ *   An array of data corresponding to one row of the structured CSV data.
+ *
+ * @return array or FALSE
+ *   Return FALSE if NO problems found; otherwise return an associative array of $cell -> $message strings, where
+ *    $cell echoes the offending content and $message explains what is wrong with it. 
+ */  
+ hook_validate_csv($xpaths, $data) {
+   $results = FALSE;
+   // Loop over the $xpaths...
+   foreach($xpaths as $xpath) {
+     // Do some meaningful validation here.
+     if (strpos($xpath,"#") === 0) {
+       results[$xpath] = "'$xpath' is a comment."
+     }
+   }
+   // Loop over the $data...
+   foreach($data as $cell) {
+     // Do some meaningful validation here.
+     if (strpos($cell,"#") === 0) {
+       results[$cell] = "'$cell' is a comment."
+     }
+   }
+  return $results;    
+ }
+
 
 /**
  * If the MODS xpaths are already in the CSV file and XPath mapping is skipped...
