@@ -298,6 +298,16 @@ function icg_csv_import_batch_item($head, $row, $controls) {
     fclose($fp);
     return TRUE;
   }
+  
+  // Invoke all hook_validate_csv functions.  Pass the array of $headers (xpaths) and
+  // $record (one row of CSV data). The hook function should return FALSE if there
+  // are no problems; otherwise it should return an associative array of
+  // content -> message pairs indicating the source of the problem (content) and
+  // a message explaining what's wrong.
+  $problems = module_invoke_all('validate_csv', $headers, $record);
+  if ($problems) {
+    // @TODO...Stop the process, or report the issues an move on?
+  }
 
   // Build a simple MODS DOMDocument to hold the data.
   $doc = new DOMDocument('1.0');
