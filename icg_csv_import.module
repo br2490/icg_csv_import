@@ -15,6 +15,63 @@ function icg_csv_import_init( ) {
   ini_set('auto_detect_line_endings', TRUE);
 }
 
+
+/**
+ * Impl. hook_xml_form_builder_get_form_modify_definition
+ *
+ * Cause we gonna modify some definitions, if you know what I mean.
+ *
+ * @param $form
+ * @param $form_state
+ *
+ */
+function icg_csv_import_xml_form_builder_get_form_modify_definition_alter(&$form, &$form_state) {
+  //Foremost: ASSERT THAT WE'RE ACTUALLY CATCHING THIS HOOK FROM OUR MODULE!!!
+  // if NOT $form_state contains something unique that we're injecting RETURN.
+  // do not use mappable_options in the all_values array!
+
+  // Need to figure out where to break this into its own function.
+
+  //ASSERT mappable option exists.
+  // if NOT throw exception, @TODO follow this path to add additional error chking
+  // do not use [mappable_options] in the initial assertion, since we could be in our module, but something is awry
+
+  // How do I keep this ... without it being a global??
+  $mappable_options = $form_state['all_values']['mappable_options'];
+
+  // So we know how our $form looks right now. It's pretty AMAZING.
+  // dpm($form);
+  dpm($form_state);
+  _icg_form_array_iterator_set_options_redux($form, $mappable_options);
+
+  dpm($form);
+}
+
+
+// THIS SHOULD NOT BE IN THIS FILE
+  function _icg_form_array_iterator_set_options_redux(&$array, $mappable_options) {
+    static $manipulable_fields = array(
+      'textfield',
+      'textarea',
+      'tags',
+    );
+
+    if(isset($array['#type'])
+      && in_array($array['#type'], $manipulable_fields)) {
+      $array['#type'] = 'select';
+      $array['#options'] = $mappable_options;
+      // Do we want to append something to the description as help text?
+    }
+    else if (is_array($array)) {
+      foreach($array as $key => &$value){
+        if (isset($value) && is_array($value)) {
+          _icg_form_array_iterator_set_options_redux($value, $mappable_options);
+        }
+      }
+    }
+}
+
+
 /**
  * ICG CSV Import Menu
  *

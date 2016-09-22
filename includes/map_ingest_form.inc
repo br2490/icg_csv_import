@@ -52,18 +52,16 @@ function icg_csv_import_form_submit($form, &$form_state) {
       break;
 
     case 1:
-
       // Do not submit the form
       $form_state['rebuild'] = TRUE;
       // Instead go to the next page.
       $form_state['step']++;
-      // pm($form_state);
       break;
 
     case 2:
 
       // Fetch defaults
-      $defaults = _fetch_CSV_defaults( );
+      $defaults = _fetch_CSV_defaults();
 
       // Open the constants file, if any
       if (isset($form_state['all_values']['constants_csv'])) {
@@ -81,7 +79,9 @@ function icg_csv_import_form_submit($form, &$form_state) {
 
       // Do something with all_values and redirect away from the form!
       icg_csv_import_build_batch($form_state);
-      if (module_exists('devel')) { dpm($form_state); }
+      if (module_exists('devel')) {
+        dpm($form_state);
+      }
       break;
 
   endswitch;
@@ -257,6 +257,10 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
 
     case 1:     // Form page 2... Map CSV columns to metadata form elements.
 
+      $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Next')
+      );
 
       // No mapping necessary...let the user know to proceed.
       if ($form_state['values']['skip_field_mapping']) {
@@ -264,23 +268,26 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
           '#markup' => "<p>You have indicated that metadata XPaths are already mapped in the first row of the CSV file.  Click 'Next' to proceed.</p>",
         );
         $form_state['step']++;   // skip the mapping AND review forms
-        $form_state['all_values'] += _fetch_CSV_defaults( );
+        $form_state['all_values'] += _fetch_CSV_defaults();
+        // Just leave the code early if this is true. Reducing nesting.
+        break;
+      }
 
-      } else {    // Map CSV columns to metadata form elements.
+      // Otherwise map CSV columns to metadata form elements.
 
         // A metadata form has been selected.  Fetch it's title and add it's data array to
         // $form_state['collection_policy']['selected']
         $selected_form = $form_state['all_values']['xml_form'];
         $cmodel = $form_state['all_values']['content_model'];
         $forms = $form_state['collection_policy']['forms'][$cmodel];
-        foreach($forms as $fdata) {
+        foreach ($forms as $fdata) {
           if ($fdata['form_name'] === $selected_form) {
             $form_state['collection_policy']['selected'] = $fdata;
             $path = drupal_get_path('module', 'xml_form_builder');
-            $form_state['all_values']['transform'] = $path.'/transforms/'.$fdata['transform'];
+            $form_state['all_values']['transform'] = $path . '/transforms/' . $fdata['transform'];
             $label_field = '/mods';
-            foreach($fdata['title_field'] as $tfield) {
-              $label_field .= '/'.$tfield;
+            foreach ($fdata['title_field'] as $tfield) {
+              $label_field .= '/' . $tfield;
             }
             $form_state['all_values']['label_field'] = $label_field;
             break;
@@ -302,11 +309,16 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
 
         // Create an array of options for our form. Include an 'ignore' option.
         // @TODO: check with JDP if this is acceptable use of CSV array[0].
-        $mappable_options = array(NULL => 'Ignored Field', "USE_CONSTANT" => 'Enter a constant value...',);
+        $mappable_options = array(
+          NULL => 'Ignored Field',
+          "USE_CONSTANT" => 'Enter a constant value...',
+        );
         foreach ($csv_parsed[0] as $column_heading) {
           $mappable_options[$column_heading] = $column_heading;
-          $form_state['all_values']['csvColumns'][ ] = $column_heading;
+          $form_state['all_values']['csvColumns'][] = $column_heading;
         }
+        $form_state['all_values']['mappable_options'] = $mappable_options;
+      // @TODO Re think this whole damn thing. Why am I doing this here, in the form?
 
         // Grab the XML form the user selected as associated.
         $xml_form = xml_form_builder_get_form($form, $form_state, $form_name);
@@ -314,16 +326,10 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
         // Make the form OURS! Change all textareas/textfields into selects and
         // use our options array from above.
         // Stand clear of the crazy iterator while in motion.
-        $xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
-        $form_state['all_values']['xpaths'] = $xpaths;
+//        $xpaths = _icg_form_array_iterator_set_options($xml_form, $xml_form, $mappable_options, $form_name);
+//        $form_state['all_values']['xpaths'] = $xpaths;
 
         $form = $xml_form;
-      }
-
-      $form['submit'] = array(
-        '#type' => 'submit',
-        '#value' => t('Next')
-      );
 
       break;
 
@@ -337,10 +343,12 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
       $merged = array_merge_recursive($form_state['all_values']['xpaths'], $values);
       _icg_csv_import_convert_array_keys($merged, '0', 'csv');
       _icg_csv_import_remove_numeric_keys($merged);
-      if (module_exists('devel')) { dpm($merged); }
+      if (module_exists('devel')) {
+        dpm($merged);
+      }
 
       // Make a review form from $merged.
-      $step3 = array( );
+      $step3 = array();
       _icg_csv_import_make_review_form($merged, $step3, $form_state);
 
       $step3['submit'] = array(
@@ -349,7 +357,9 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
       );
 
       $form = $step3;
-      if (module_exists('devel')) { dpm($form); }
+      if (module_exists('devel')) {
+        dpm($form);
+      }
 
       break;
 
@@ -358,15 +368,18 @@ function icg_csv_import_get_form($step, $collection, &$form_state) {
   return $form;
 }
 
+
+
+
 /**
  * @param $merged
  * @param $step3
  * @param $form_state
  * @param bool $parent
  */
-function _icg_csv_import_make_review_form($merged, &$step3, $form_state, $fieldset=FALSE) {
-  static $fieldsets = array( );
-  static $csvColumns = array( );
+function _icg_csv_import_make_review_form($merged, &$step3, $form_state, $fieldset = FALSE) {
+  static $fieldsets = array();
+  static $csvColumns = array();
 
   // If $fieldset is FALSE, loop through all the first-level elements of $merged.
   // Build a fieldset form element for each.
@@ -394,13 +407,15 @@ function _icg_csv_import_make_review_form($merged, &$step3, $form_state, $fields
       $fieldset = $value['#hash'];
     }
 
-    if (isset($value['#originalType'])) { $original = $value['#originalType']; }
+    if (isset($value['#originalType'])) {
+      $original = $value['#originalType'];
+    }
 
     // If the current element has both 'csv' and 'xpath' $value,
     // then it must represent an imported or constant field; display it.
     if (!empty($value['csv']) && isset($value['xpath'])) {
       $useConstant = ($value['csv'] == "USE_CONSTANT");
-      $container = $key.'-container';
+      $container = $key . '-container';
 
       $step3[$fieldset][$container] = array(
         '#prefix' => '',
@@ -424,7 +439,9 @@ function _icg_csv_import_make_review_form($merged, &$step3, $form_state, $fields
         '#default_value' => $value['xpath'],
       );
 
-      if (!$fromCSV) { $step3[$fieldset][$container][$key]['#title'] = "'$key' XPath is: "; }
+      if (!$fromCSV) {
+        $step3[$fieldset][$container][$key]['#title'] = "'$key' XPath is: ";
+      }
 
       // If this field uses a constant or if it was originally a select box...present a field box for that.
       if ($useConstant) {
@@ -434,14 +451,17 @@ function _icg_csv_import_make_review_form($merged, &$step3, $form_state, $fields
           '#required' => FALSE,
           '#default_value' => 'Enter CONSTANT here.',
         );
-      } else if ($original === 'select') {  // An XML form select box.  Present it as though it were a constant.
-        $step3[$fieldset][$container][$key . '-constant'] = array(
-          '#type' => 'textfield',
-          '#disabled' => TRUE,
-          '#size' => 40,
-          '#required' => FALSE,
-          '#value' => $value['csv'],
-        );
+      }
+      else {
+        if ($original === 'select') {  // An XML form select box.  Present it as though it were a constant.
+          $step3[$fieldset][$container][$key . '-constant'] = array(
+            '#type' => 'textfield',
+            '#disabled' => TRUE,
+            '#size' => 40,
+            '#required' => FALSE,
+            '#value' => $value['csv'],
+          );
+        }
       }
     }
 
@@ -468,7 +488,8 @@ function icg_csv_import_validate($form, &$form_state) {
     // File upload was attempted.
     if ($file) {
       $form_state['values']['csv_file'] = $file;  // Put the temporary file in $form_values so we can save it on submit.
-    } else {
+    }
+    else {
       form_set_error('icg_csv_import', t('The CSV data file could not be uploaded.'));  // File upload failed.
     }
   }
@@ -479,7 +500,8 @@ function icg_csv_import_validate($form, &$form_state) {
     // File upload was attempted.
     if ($file) {
       $form_state['values']['constants_csv'] = $file;  // Put the temporary file in $form_values so we can save it on submit.
-    } else {
+    }
+    else {
       form_set_error('icg_csv_import', t('The constants CSV file could not be uploaded.'));  // File upload failed.
     }
   }
