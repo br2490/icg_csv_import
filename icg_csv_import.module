@@ -34,7 +34,7 @@ function icg_csv_import_xml_form_builder_get_form_modify_definition_alter(&$form
   // if NOT $form_state contains something unique that we're injecting RETURN.
   // do not use mappable_options in the all_values array!
   global $_icg_csv_import_glob;
-  dpm('hit');
+//  dpm('hit');
   dpm($form);
   if (empty($form_state['all_values']) & empty($_icg_csv_import_glob)) {
     return;
@@ -50,7 +50,7 @@ function icg_csv_import_xml_form_builder_get_form_modify_definition_alter(&$form
     );
   }
 
-  //ASSERT mappable option exists.
+  // @ASSERT mappable option exists.
   // if NOT throw exception, @TODO follow this path to add additional error chking
   // do not use [mappable_options] in the initial assertion, since we could be in our module, but something is awry
 
@@ -64,9 +64,7 @@ function icg_csv_import_xml_form_builder_get_form_modify_definition_alter(&$form
 // THIS SHOULD NOT BE IN THIS FILE
 function _icg_form_array_iterator_set_options_redux(&$array) {
   global $_icg_csv_import_glob;
-
   //ASSERT OUR GLOBALS EXIST.
-
 
   if (isset($array['#type'])
     && in_array($array['#type'], $_icg_csv_import_glob['manipulable_fields'])
