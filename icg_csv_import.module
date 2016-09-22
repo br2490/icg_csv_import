@@ -1,5 +1,8 @@
 <?php
 
+// I am a terrible global variable user. - BR
+$_icg_csv_import_glob = array();
+
 /**
  * Include batch.inc when module loads.  Required for batch processing!
  */
@@ -16,6 +19,7 @@ function icg_csv_import_init( ) {
 }
 
 
+
 /**
  * Impl. hook_xml_form_builder_get_form_modify_definition
  *
@@ -29,20 +33,30 @@ function icg_csv_import_xml_form_builder_get_form_modify_definition_alter(&$form
   //Foremost: ASSERT THAT WE'RE ACTUALLY CATCHING THIS HOOK FROM OUR MODULE!!!
   // if NOT $form_state contains something unique that we're injecting RETURN.
   // do not use mappable_options in the all_values array!
+  global $_icg_csv_import_glob;
+  if (empty($form_state['all_values'])) {
+    return;
+  }
+
+  
+  // If this is our first run we must set the mappable options to our global.
+  if (empty($_icg_csv_import_glob['mappable_options'])) {
+    $_icg_csv_import_glob['mappable_options'] = $form_state['all_values']['mappable_options'];
+    dpm('We have set our global');
+  }
 
   // Need to figure out where to break this into its own function.
 
   //ASSERT mappable option exists.
-  // if NOT throw exception, @TODO follow this path to add additional error chking
+  // if NOT throw exception, @TOcDO follow this path to add additional error chking
   // do not use [mappable_options] in the initial assertion, since we could be in our module, but something is awry
 
   // How do I keep this ... without it being a global??
-  $mappable_options = $form_state['all_values']['mappable_options'];
+
 
   // So we know how our $form looks right now. It's pretty AMAZING.
-  // dpm($form);
-  dpm($form_state);
-  _icg_form_array_iterator_set_options_redux($form, $mappable_options);
+  dpm($form);
+  _icg_form_array_iterator_set_options_redux($form, $_icg_csv_import_glob['mappable_options']);
 
   dpm($form);
 }
